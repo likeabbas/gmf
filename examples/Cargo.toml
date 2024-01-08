@@ -27,6 +27,11 @@ name = "helloworld-tonic-client"
 path = "src/helloworld-tonic/client.rs"
 required-features = ["hyper-warp"]
 
+[[bin]]
+name = "helloworld-axum-glommio-server"
+path = "src/helloworld-axum-glommio/server.rs"
+required-features = ["hyper-warp"]
+
 [[bench]]
 name = "benchmark"
 harness = false
@@ -56,6 +61,7 @@ http = { version = "0.2", optional = true }
 http-body = { version = "0.4.2", optional = true }
 prost = "0.11"
 gmf = { version = "1.0.0", path = "../gmf" }
+axum = { version = "0.7.3" }
 
 [build-dependencies]
 tonic-build = "0.9.2"
