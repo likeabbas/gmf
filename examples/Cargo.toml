@@ -11,26 +11,26 @@ name = "helloworld-gmf-server"
 path = "src/helloworld-gmf/server.rs"
 required-features = ["hyper-warp"]
 
-[[bin]]
-name = "helloworld-gmf-client"
-path = "src/helloworld-gmf/client.rs"
-required-features = ["hyper-warp"]
-
-
-[[bin]]
-name = "helloworld-tonic-server"
-path = "src/helloworld-tonic/server.rs"
-required-features = ["hyper-warp"]
-
-[[bin]]
-name = "helloworld-tonic-client"
-path = "src/helloworld-tonic/client.rs"
-required-features = ["hyper-warp"]
-
-[[bin]]
-name = "helloworld-axum-glommio-server"
-path = "src/helloworld-axum-glommio/server.rs"
-required-features = ["hyper-warp"]
+#[[bin]]
+#name = "helloworld-gmf-client"
+#path = "src/helloworld-gmf/client.rs"
+#required-features = ["hyper-warp"]
+#
+#
+#[[bin]]
+#name = "helloworld-tonic-server"
+#path = "src/helloworld-tonic/server.rs"
+#required-features = ["hyper-warp"]
+#
+#[[bin]]
+#name = "helloworld-tonic-client"
+#path = "src/helloworld-tonic/client.rs"
+#required-features = ["hyper-warp"]
+#
+#[[bin]]
+#name = "helloworld-axum-glommio-server"
+#path = "src/helloworld-axum-glommio/server.rs"
+#required-features = ["hyper-warp"]
 
 [[bin]]
 name = "glommio-hyper-compat-attempt"
