@@ -12,12 +12,16 @@ use std::{
     },
     net::SocketAddr,
     rc::Rc,
+    task::{Context, Poll},
+    pin::Pin,
 };
-
-use glommio::{net::TcpListener, sync::Semaphore, GlommioError, TaskQueueHandle as TaskQ};
-use hyper::{rt::Executor, server::conn::Http, Request, Response};
+use glommio::{net::TcpListener, net::TcpStream, sync::Semaphore, GlommioError, TaskQueueHandle as TaskQ};
+use hyper::{rt::Executor, server::conn::http2, Request, Response};
 use log::{debug, error};
 use tower_service::Service;
+use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+
+
 
 use crate::server::executor::GlommioExecutor;
 use crate::server::tokio_interop::TokioIO;
@@ -56,9 +60,9 @@ impl GlommioServer {
 /// Implementation of Server trait for GlommioServer.
 impl<S, RespBd, Error> Server<S> for GlommioServer
 where
-    S: Service<Request<hyper::Body>, Response = Response<RespBd>, Error = Error> + Clone + 'static,
+    S: Service<Request<hyper::body::Incoming>, Response = Response<RespBd>, Error = Error> + Clone + 'static,
     Error: StdError + 'static + Send + Sync,
-    RespBd: hyper::body::HttpBody + 'static,
+    RespBd: hyper::body::Body + 'static,
     RespBd::Error: StdError + Send + Sync,
 {
     type Result = io::Result<glommio::Task<Result<(), GlommioError<()>>>>;
@@ -96,10 +100,8 @@ where
                      match scoped_conn_control.try_acquire_permit(1) {
                          Ok(_) => {
                              debug!("Acquired connection semaphore, number of available connection permits : {}.",  scoped_conn_control.available());
-                             let http = Http::new()
-                                 .with_executor(GlommioExecutor { task_q })
-                                 .serve_connection(TokioIO(stream), captured_service);
-
+                             let http = http2::Builder::new(GlommioExecutor { task_q })
+                                 .serve_connection(HyperStream(stream), captured_service);
                               http.await.map_err(|e| {
                                  error!("Stream failed with error {:?}", e);
                                  io::Error::from(ConnectionReset).into()
@@ -122,5 +124,42 @@ where
         });
 
         spawn_result.map_err(|_| io::Error::new(Other, "Failed to spawn server."))
+    }
+}
+
+/// Wrapper around Glommio's TcpStream to implement tokio's AsyncRead and AsyncWrite traits.
+pub(crate) struct HyperStream(pub TcpStream);
+
+impl AsyncRead for HyperStream {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut ReadBuf<'_>,
+    ) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.0)
+            .poll_read(cx, buf.initialize_unfilled())
+            .map(|result| {
+                result.map(|n| {
+                    buf.advance(n);
+                })
+            })
+    }
+}
+
+impl AsyncWrite for HyperStream {
+    fn poll_write(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &[u8],
+    ) -> Poll<io::Result<usize>> {
+        Pin::new(&mut self.0).poll_write(cx, buf)
+    }
+
+    fn poll_flush(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.0).poll_flush(cx)
+    }
+
+    fn poll_shutdown(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<io::Result<()>> {
+        Pin::new(&mut self.0).poll_close(cx)
     }
 }

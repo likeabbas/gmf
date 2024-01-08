@@ -6,7 +6,7 @@
 use std::net::SocketAddr;
 
 use glommio::{executor, GlommioError, Latency, LocalExecutorBuilder, Placement, Shares, Task};
-use hyper::body::HttpBody;
+use hyper::body::Body;
 use hyper::http;
 use log::info;
 use num_cpus;
@@ -28,14 +28,14 @@ pub struct GmfServer<S, RespBd, Error> {
 impl<S, RespBd, Error> GmfServer<S, RespBd, Error>
 where
     S: Service<
-            http::request::Request<hyper::Body>,
+            http::request::Request<hyper::body::Incoming>,
             Response = http::response::Response<RespBd>,
             Error = Error,
         > + Clone
         + Send
         + 'static,
     Error: std::error::Error + 'static + Send + Sync,
-    RespBd: HttpBody + 'static,
+    RespBd: Body + 'static,
     RespBd::Error: std::error::Error + Send + Sync,
 {
     /// Creates a new instance of `GmfServer`.
