@@ -18,11 +18,12 @@ mod hyper_compat {
         net::{TcpListener, TcpStream},
         sync::Semaphore,
     };
-    use hyper::{server::conn::http2, body::Incoming, Request, Response};
+    use hyper::{server::conn::http2, server::conn::http1, body::Incoming, Request, Response};
     use std::{io, rc::Rc};
     use hyper::rt::ReadBufCursor;
     use http_body_util::{BodyExt, Full};
     use bytes::{Buf, Bytes};
+
     type BoxBody = http_body_util::combinators::BoxBody<Bytes, hyper::Error>;
 
     #[derive(Clone)]
@@ -110,7 +111,7 @@ mod hyper_compat {
                     let addr = stream.local_addr().unwrap();
                     glommio::spawn_local(enclose!{(conn_control) async move {
                         let _permit = conn_control.acquire_permit(1).await;
-                        if let Err(x) = http2::Builder::new(HyperExecutor).serve_connection(HyperStream(stream), service_fn(service)).await {
+                        if let Err(x) = http1::Builder::new(HyperExecutor).serve_connection(HyperStream(stream), service_fn(service)).await {
                             if !x.is_incomplete_message() {
                                 eprintln!("Stream from {addr:?} failed with error {x:?}");
                             }
